@@ -9,8 +9,9 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
-import { WorkSessionService } from '../services/workSessionService';
+import { WorkSession, WorkSessionService } from '../services/workSessionService';
 import UserSelector from './UserSelector';
+import SessionEditor from './SessionEditor';
 
 interface WorkTimeDisplayProps {
   visible: boolean;
@@ -24,6 +25,8 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
   const [selectedUserId, setSelectedUserId] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showUserSelector, setShowUserSelector] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<WorkSession | null>(null);
+  const [showSessionEditor, setShowSessionEditor] = useState(false);
   
   const userIds = WorkSessionService.getAllUserIds();
   const categories = ['all', ...WorkSessionService.getAllCategories()];
@@ -104,6 +107,27 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
   const getUserDisplayName = (userId: string) => {
     if (userId === 'all') return 'Tous les coaches';
     return userId.replace(/^coach/, 'Coach ');
+  };
+
+  const handleSessionSelect = (session: WorkSession) => {
+    setSelectedSession(session);
+    setShowSessionEditor(true);
+  };
+
+  const handleSessionSave = (updatedSession: WorkSession) => {
+    // Dans une vraie app, on mettrait à jour les données
+    console.log('Session mise à jour:', updatedSession);
+    setShowSessionEditor(false);
+    setSelectedSession(null);
+    // Ici on pourrait rafraîchir les données
+  };
+
+  const handleSessionDelete = (sessionId: string) => {
+    // Dans une vraie app, on supprimerait la session
+    console.log('Session supprimée:', sessionId);
+    setShowSessionEditor(false);
+    setSelectedSession(null);
+    // Ici on pourrait rafraîchir les données
   };
 
   if (showUserSelector) {
@@ -273,19 +297,33 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
             </Text>
             
             {recentSessions.map(session => (
-              <View key={session.id} style={[styles.sessionItem, { borderColor: colors.border }]}>
-                <View style={styles.sessionHeader}>
-                  <Text style={[styles.sessionCategory, { color: colors.primary }]}>
-                    {session.category}
-                  </Text>
-                  <Text style={[styles.sessionDuration, { color: colors.text }]}>
-                    {WorkSessionService.formatDuration(session.durationInMinutes)}
-                  </Text>
+              <TouchableOpacity
+                key={session.id}
+                style={[styles.sessionItem, { borderColor: colors.border }]}
+                onPress={() => handleSessionSelect(session)}
+              >
+                <View style={styles.sessionContent}>
+                  <View style={styles.sessionHeader}>
+                    <Text style={[styles.sessionCategory, { color: colors.primary }]}>
+                      {session.category}
+                    </Text>
+                    <View style={styles.sessionMeta}>
+                      <Text style={[styles.sessionDuration, { color: colors.text }]}>
+                        {WorkSessionService.formatDuration(session.durationInMinutes)}
+                      </Text>
+                      <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✏️</Text>
+                    </View>
+                  </View>
+                  <View style={styles.sessionDetails}>
+                    <Text style={[styles.sessionDate, { color: colors.textSecondary }]}>
+                      {WorkSessionService.formatDate(session.startTime)}
+                    </Text>
+                    <Text style={[styles.sessionCoach, { color: colors.textSecondary }]}>
+                      {getUserDisplayName(session.userId)}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={[styles.sessionDate, { color: colors.textSecondary }]}>
-                  {WorkSessionService.formatDate(session.startTime)}
-                </Text>
-              </View>
+              </TouchableOpacity>
             ))}
             
             {recentSessions.length === 0 && (
@@ -295,6 +333,17 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
             )}
           </View>
         </ScrollView>
+        
+        <SessionEditor
+          visible={showSessionEditor}
+          session={selectedSession}
+          onClose={() => {
+            setShowSessionEditor(false);
+            setSelectedSession(null);
+          }}
+          onSave={handleSessionSave}
+          onDelete={handleSessionDelete}
+        />
       </View>
     </Modal>
   );
@@ -432,23 +481,47 @@ const styles = StyleSheet.create({
   sessionItem: {
     borderBottomWidth: 1,
     paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+  },
+  sessionContent: {
+    flex: 1,
   },
   sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  sessionMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sessionCategory: {
     fontSize: 16,
     fontWeight: '500',
+    flex: 1,
   },
   sessionDuration: {
     fontSize: 16,
     fontWeight: '600',
   },
+  editIcon: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  sessionDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   sessionDate: {
     fontSize: 14,
+  },
+  sessionCoach: {
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   emptyText: {
     textAlign: 'center',
