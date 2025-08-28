@@ -10,6 +10,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
 import { WorkSessionService } from '../services/workSessionService';
+import UserSelector from './UserSelector';
 
 interface WorkTimeDisplayProps {
   visible: boolean;
@@ -20,33 +21,71 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
   const { theme } = useTheme();
   const colors = Colors[theme];
   
-  const [selectedUserId, setSelectedUserId] = useState('coach1');
+  const [selectedUserId, setSelectedUserId] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showUserSelector, setShowUserSelector] = useState(false);
   
   const userIds = WorkSessionService.getAllUserIds();
   const categories = ['all', ...WorkSessionService.getAllCategories()];
   
   const filteredStats = useMemo(() => {
-    const stats = WorkSessionService.getTimeStatsByUserId(selectedUserId);
-    
-    if (selectedCategory === 'all') {
-      return stats;
+    if (selectedUserId === 'all') {
+      // Stats pour tous les coaches
+      const allSessions = WorkSessionService.getAllSessions();
+      let sessions = allSessions;
+      
+      if (selectedCategory !== 'all') {
+        sessions = allSessions.filter(s => s.category === selectedCategory);
+      }
+      
+      const totalMinutes = sessions.reduce((total, session) => total + session.durationInMinutes, 0);
+      
+      // Calcul par catégorie pour tous les coaches
+      const categoryBreakdown = WorkSessionService.getAllCategories().map(category => {
+        const categorySessions = allSessions.filter(s => s.category === category);
+        const categoryMinutes = categorySessions.reduce((total, session) => total + session.durationInMinutes, 0);
+        return {
+          category,
+          minutes: categoryMinutes,
+          sessions: categorySessions.length
+        };
+      }).filter(stat => stat.minutes > 0);
+      
+      return {
+        totalMinutes,
+        totalHours: Math.round((totalMinutes / 60) * 100) / 100,
+        totalSessions: sessions.length,
+        categoryBreakdown: selectedCategory === 'all' ? categoryBreakdown : categoryBreakdown.filter(cat => cat.category === selectedCategory)
+      };
+    } else {
+      // Stats pour un coach spécifique
+      const stats = WorkSessionService.getTimeStatsByUserId(selectedUserId);
+      
+      if (selectedCategory === 'all') {
+        return stats;
+      }
+      
+      const categoryTime = WorkSessionService.getTotalTimeByCategory(selectedUserId, selectedCategory);
+      const categorySessions = WorkSessionService.getSessionsByUserId(selectedUserId)
+        .filter(s => s.category === selectedCategory);
+      
+      return {
+        totalMinutes: categoryTime,
+        totalHours: Math.round((categoryTime / 60) * 100) / 100,
+        totalSessions: categorySessions.length,
+        categoryBreakdown: stats.categoryBreakdown.filter(cat => cat.category === selectedCategory)
+      };
     }
-    
-    const categoryTime = WorkSessionService.getTotalTimeByCategory(selectedUserId, selectedCategory);
-    const categorySessions = WorkSessionService.getSessionsByUserId(selectedUserId)
-      .filter(s => s.category === selectedCategory);
-    
-    return {
-      totalMinutes: categoryTime,
-      totalHours: Math.round((categoryTime / 60) * 100) / 100,
-      totalSessions: categorySessions.length,
-      categoryBreakdown: stats.categoryBreakdown.filter(cat => cat.category === selectedCategory)
-    };
   }, [selectedUserId, selectedCategory]);
   
   const recentSessions = useMemo(() => {
-    let sessions = WorkSessionService.getSessionsByUserId(selectedUserId);
+    let sessions;
+    
+    if (selectedUserId === 'all') {
+      sessions = WorkSessionService.getAllSessions();
+    } else {
+      sessions = WorkSessionService.getSessionsByUserId(selectedUserId);
+    }
     
     if (selectedCategory !== 'all') {
       sessions = sessions.filter(s => s.category === selectedCategory);
@@ -57,94 +96,112 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
       .slice(0, 10);
   }, [selectedUserId, selectedCategory]);
 
+  const handleUserSelect = (userId: string) => {
+    setSelectedUserId(userId);
+    setShowUserSelector(false);
+  };
+
+  const getUserDisplayName = (userId: string) => {
+    if (userId === 'all') return 'Tous les coaches';
+    return userId.replace(/^coach/, 'Coach ');
+  };
+
+  if (showUserSelector) {
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          {/* Header pour le sélecteur */}
+          <View style={[styles.header, { backgroundColor: colors.headerBackground }]}>
+            <TouchableOpacity onPress={() => setShowUserSelector(false)} style={styles.backButton}>
+              <Text style={[styles.backText, { color: colors.headerText }]}>← Retour</Text>
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.headerText }]}>
+              👥 Sélection Coach
+            </Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Text style={[styles.closeText, { color: colors.headerText }]}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.content}>
+            <UserSelector
+              selectedUserId={selectedUserId}
+              onSelectUser={handleUserSelect}
+              showAllOption={true}
+            />
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.headerBackground }]}>
+          <TouchableOpacity 
+            onPress={() => setShowUserSelector(true)} 
+            style={styles.userButton}
+          >
+            <Text style={[styles.userButtonText, { color: colors.headerText }]}>
+              👤 {getUserDisplayName(selectedUserId)}
+            </Text>
+          </TouchableOpacity>
+          
           <Text style={[styles.title, { color: colors.headerText }]}>
             📊 Temps de travail
           </Text>
+          
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={[styles.closeText, { color: colors.headerText }]}>✕</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Filtres */}
+          {/* Filtre par catégorie */}
           <View style={[styles.filtersSection, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Filtres</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Filtrer par catégorie</Text>
             
-            <View style={styles.filterRow}>
-              <View style={styles.filterItem}>
-                <Text style={[styles.filterLabel, { color: colors.text }]}>Coach:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                  {userIds.map(userId => (
-                    <TouchableOpacity
-                      key={userId}
-                      style={[
-                        styles.filterButton,
-                        { 
-                          backgroundColor: selectedUserId === userId ? colors.primary : colors.cardBackground,
-                          borderColor: colors.border
-                        }
-                      ]}
-                      onPress={() => setSelectedUserId(userId)}
-                    >
-                      <Text style={[
-                        styles.filterButtonText,
-                        { color: selectedUserId === userId ? '#fff' : colors.text }
-                      ]}>
-                        {userId}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-              
-              <View style={styles.filterItem}>
-                <Text style={[styles.filterLabel, { color: colors.text }]}>Catégorie:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                  <TouchableOpacity
-                    style={[
-                      styles.filterButton,
-                      { 
-                        backgroundColor: selectedCategory === 'all' ? colors.primary : colors.cardBackground,
-                        borderColor: colors.border
-                      }
-                    ]}
-                    onPress={() => setSelectedCategory('all')}
-                  >
-                    <Text style={[
-                      styles.filterButtonText,
-                      { color: selectedCategory === 'all' ? '#fff' : colors.text }
-                    ]}>
-                      Toutes
-                    </Text>
-                  </TouchableOpacity>
-                  {WorkSessionService.getAllCategories().map(category => (
-                    <TouchableOpacity
-                      key={category}
-                      style={[
-                        styles.filterButton,
-                        { 
-                          backgroundColor: selectedCategory === category ? colors.primary : colors.cardBackground,
-                          borderColor: colors.border
-                        }
-                      ]}
-                      onPress={() => setSelectedCategory(category)}
-                    >
-                      <Text style={[
-                        styles.filterButtonText,
-                        { color: selectedCategory === category ? '#fff' : colors.text }
-                      ]}>
-                        {category}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  { 
+                    backgroundColor: selectedCategory === 'all' ? colors.primary : colors.cardBackground,
+                    borderColor: colors.border
+                  }
+                ]}
+                onPress={() => setSelectedCategory('all')}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  { color: selectedCategory === 'all' ? '#fff' : colors.text }
+                ]}>
+                  Toutes
+                </Text>
+              </TouchableOpacity>
+              {WorkSessionService.getAllCategories().map(category => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.filterButton,
+                    { 
+                      backgroundColor: selectedCategory === category ? colors.primary : colors.cardBackground,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text style={[
+                    styles.filterButtonText,
+                    { color: selectedCategory === category ? '#fff' : colors.text }
+                  ]}>
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Statistiques globales */}
@@ -255,6 +312,24 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
+  userButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+  },
+  userButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -278,12 +353,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
-  },
-  filterRow: {
-    flexDirection: 'column',
-  },
-  filterItem: {
     marginBottom: 16,
   },
   filterLabel: {
