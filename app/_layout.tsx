@@ -1,29 +1,81 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Colors } from './constants/Colors';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+function RootLayoutContent() {
+  const { theme, isDark } = useTheme();
+  const colors = Colors[theme];
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.headerBackground,
+          },
+          headerTintColor: colors.headerText,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerShadowVisible: false,
+          animation: 'slide_from_right',
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}>
+        <Stack.Screen
+          name='index'
+          options={{
+            title: 'Accueil',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name='sessions'
+          options={{
+            title: 'Sessions d&apos;entraînement',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='athletes'
+          options={{
+            title: 'Mes athlètes',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='statistics'
+          options={{
+            title: 'Statistiques',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='settings'
+          options={{
+            title: 'Paramètres',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='profile'
+          options={{
+            title: 'Profil',
+            headerShown: true,
+          }}
+        />
       </Stack>
-      <StatusBar style="auto" />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutContent />
     </ThemeProvider>
   );
 }

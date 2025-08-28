@@ -1,0 +1,76 @@
+{
+  "workSessions": [
+    {
+      "id": "1",
+      "userId": "coach1",
+      "category": "Entraînement",
+      "startTime": "2024-01-15T08:00:00Z",
+      "endTime": "2024-01-15T10:30:00Z",
+      "durationInMinutes": 150
+    },
+    {
+      "id": "2",
+      "userId": "coach1",
+      "category": "Inscription nageurs compétitions",
+      "startTime": "2024-01-15T14:00:00Z",
+      "endTime": "2024-01-15T15:30:00Z",
+      "durationInMinutes": 90
+    },
+    {
+      "id": "3",
+      "userId": "coach1",
+      "category": "Analyse Vidéo",
+      "startTime": "2024-01-16T09:00:00Z",
+      "endTime": "2024-01-16T11:00:00Z",
+      "durationInMinutes": 120
+    },
+    {
+      "id": "4",
+      "userId": "coach1",
+      "category": "Réunion",
+      "startTime": "2024-01-16T16:00:00Z",
+      "endTime": "2024-01-16T17:00:00Z",
+      "durationInMinutes": 60
+    },
+    {
+      "id": "5",
+      "userId": "coach1",
+      "category": "Administratif",
+      "startTime": "2024-01-17T10:00:00Z",
+      "endTime": "2024-01-17T11:30:00Z",
+      "durationInMinutes": 90
+    },
+    {
+      "id": "6",
+      "userId": "coach1",
+      "category": "Recrutement",
+      "startTime": "2024-01-17T14:00:00Z",
+      "endTime": "2024-01-17T16:00:00Z",
+      "durationInMinutes": 120
+    },
+    {
+      "id": "7",
+      "userId": "coach1",
+      "category": "Entraînement",
+      "startTime": "2024-01-18T08:00:00Z",
+      "endTime": "2024-01-18T10:00:00Z",
+      "durationInMinutes": 120
+    },
+    {
+      "id": "8",
+      "userId": "coach1",
+      "category": "Entraînement",
+      "startTime": "2024-01-19T08:00:00Z",
+      "endTime": "2024-01-19T11:00:00Z",
+      "durationInMinutes": 180
+    }
+  ],
+  "categories": [
+    "Entraînement",
+    "Inscription nageurs compétitions",
+    "Recrutement",
+    "Analyse Vidéo",
+    "Réunion",
+    "Administratif"
+  ]
+}
