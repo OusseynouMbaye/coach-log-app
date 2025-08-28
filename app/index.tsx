@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useTheme } from './context/ThemeContext';
 import { Colors } from './constants/Colors';
 import WorkTimeDisplay from './components/WorkTimeDisplay';
+import CategoryManager from './components/CategoryManager';
 
 export default function Index() {
   const { theme, toggleTheme, isDark } = useTheme();
   const colors = Colors[theme];
   const [showWorkTime, setShowWorkTime] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -84,13 +86,16 @@ export default function Index() {
             <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Voir les statistiques</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionCard, { 
-            backgroundColor: colors.cardBackground,
-            shadowColor: colors.shadow,
-          }]}>
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={[styles.actionTitle, { color: colors.text }]}>Paramètres</Text>
-            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Configurer</Text>
+          <TouchableOpacity 
+            style={[styles.actionCard, { 
+              backgroundColor: colors.cardBackground,
+              shadowColor: colors.shadow,
+            }]}
+            onPress={() => setShowCategoryManager(true)}
+          >
+            <Text style={styles.actionIcon}>🗂️</Text>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Catégories</Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Gérer et supprimer</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -123,6 +128,11 @@ export default function Index() {
       <WorkTimeDisplay 
         visible={showWorkTime} 
         onClose={() => setShowWorkTime(false)} 
+      />
+      
+      <CategoryManager 
+        visible={showCategoryManager} 
+        onClose={() => setShowCategoryManager(false)} 
       />
     </ScrollView>
   );
