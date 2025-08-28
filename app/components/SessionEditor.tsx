@@ -14,7 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
 import { WorkSession, WorkSessionService } from '../services/workSessionService';
 import { SessionEditService, EditSessionData } from '../services/sessionEditService';
-import CustomDateTimePicker from './DateTimePicker';
+import SimpleDateTimePicker from './SimpleDateTimePicker';
 
 interface SessionEditorProps {
   visible: boolean;
@@ -108,20 +108,26 @@ export default function SessionEditor({
   };
 
   const handleStartDateChange = (newDate: Date) => {
+    console.log('SessionEditor - Nouvelle date de début:', newDate);
     setStartDate(newDate);
     const isoString = newDate.toISOString();
+    const formattedString = SessionEditService.formatDateForInput(isoString);
+    console.log('SessionEditor - Date formatée:', formattedString);
     setEditedData({
       ...editedData,
-      startTime: SessionEditService.formatDateForInput(isoString)
+      startTime: formattedString
     });
   };
 
   const handleEndDateChange = (newDate: Date) => {
+    console.log('SessionEditor - Nouvelle date de fin:', newDate);
     setEndDate(newDate);
     const isoString = newDate.toISOString();
+    const formattedString = SessionEditService.formatDateForInput(isoString);
+    console.log('SessionEditor - Date formatée:', formattedString);
     setEditedData({
       ...editedData,
-      endTime: SessionEditService.formatDateForInput(isoString)
+      endTime: formattedString
     });
   };
 
@@ -231,11 +237,10 @@ export default function SessionEditor({
             
             {/* Date et heure de début */}
             {isEditing ? (
-              <CustomDateTimePicker
+              <SimpleDateTimePicker
                 label="Date et heure de début"
                 value={startDate}
                 onDateChange={handleStartDateChange}
-                maximumDate={endDate}
               />
             ) : (
               <View style={styles.fieldContainer}>
@@ -252,11 +257,10 @@ export default function SessionEditor({
             
             {/* Date et heure de fin */}
             {isEditing ? (
-              <CustomDateTimePicker
+              <SimpleDateTimePicker
                 label="Date et heure de fin"
                 value={endDate}
                 onDateChange={handleEndDateChange}
-                minimumDate={startDate}
               />
             ) : (
               <View style={styles.fieldContainer}>

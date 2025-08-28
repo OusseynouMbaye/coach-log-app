@@ -54,16 +54,16 @@ export default function CustomDateTimePicker({
 
   const generateDateList = () => {
     const dates = [];
-    const currentDate = new Date();
+    const baseDate = new Date(value); // Utilise la date actuelle de la session comme référence
     
-    // Génère 60 jours (30 avant, 30 après aujourd'hui)
+    // Génère 60 jours (30 avant, 30 après la date de la session)
     for (let i = -30; i <= 30; i++) {
-      const date = new Date(currentDate);
+      const date = new Date(baseDate);
       date.setDate(date.getDate() + i);
       dates.push(date);
     }
     
-    return dates;
+    return dates.sort((a, b) => a.getTime() - b.getTime());
   };
 
   const generateTimeList = () => {
@@ -79,21 +79,25 @@ export default function CustomDateTimePicker({
   };
 
   const handleDateSelect = (selectedDate: Date) => {
-    const newDate = new Date(tempDate);
+    const newDate = new Date(value);
     newDate.setFullYear(selectedDate.getFullYear());
     newDate.setMonth(selectedDate.getMonth());
     newDate.setDate(selectedDate.getDate());
     
+    console.log('Date sélectionnée:', newDate);
     setTempDate(newDate);
     onDateChange(newDate);
     setShowDatePicker(false);
   };
 
   const handleTimeSelect = (selectedTime: Date) => {
-    const newDate = new Date(tempDate);
+    const newDate = new Date(value);
     newDate.setHours(selectedTime.getHours());
     newDate.setMinutes(selectedTime.getMinutes());
+    newDate.setSeconds(0);
+    newDate.setMilliseconds(0);
     
+    console.log('Heure sélectionnée:', newDate);
     setTempDate(newDate);
     onDateChange(newDate);
     setShowTimePicker(false);
@@ -145,7 +149,7 @@ export default function CustomDateTimePicker({
           
           <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
             {generateDateList().map((date, index) => {
-              const isSelected = date.toDateString() === tempDate.toDateString();
+              const isSelected = date.toDateString() === value.toDateString();
               const isDisabled = isDateDisabled(date);
               
               return (
@@ -158,7 +162,12 @@ export default function CustomDateTimePicker({
                       opacity: isDisabled ? 0.4 : 1
                     }
                   ]}
-                  onPress={() => !isDisabled && handleDateSelect(date)}
+                  onPress={() => {
+                    if (!isDisabled) {
+                      console.log('Clic sur date:', formatDate(date));
+                      handleDateSelect(date);
+                    }
+                  }}
                   disabled={isDisabled}
                 >
                   <Text style={[
@@ -211,8 +220,8 @@ export default function CustomDateTimePicker({
           
           <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
             {generateTimeList().map((time, index) => {
-              const isSelected = time.getHours() === tempDate.getHours() && 
-                               time.getMinutes() === tempDate.getMinutes();
+              const isSelected = time.getHours() === value.getHours() && 
+                               time.getMinutes() === value.getMinutes();
               
               return (
                 <TouchableOpacity
@@ -221,7 +230,10 @@ export default function CustomDateTimePicker({
                     styles.pickerItem,
                     { backgroundColor: isSelected ? colors.primary : 'transparent' }
                   ]}
-                  onPress={() => handleTimeSelect(time)}
+                  onPress={() => {
+                    console.log('Clic sur heure:', formatTime(time));
+                    handleTimeSelect(time);
+                  }}
                 >
                   <Text style={[
                     styles.pickerItemText,
@@ -383,6 +395,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 56,
   },
   pickerItemText: {
     fontSize: 16,
