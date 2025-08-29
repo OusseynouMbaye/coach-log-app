@@ -27,6 +27,7 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
   const [showUserSelector, setShowUserSelector] = useState(false);
   const [selectedSession, setSelectedSession] = useState<WorkSession | null>(null);
   const [showSessionEditor, setShowSessionEditor] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   const userIds = WorkSessionService.getAllUserIds();
   const categories = ['all', ...WorkSessionService.getAllCategories()];
@@ -79,7 +80,7 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
         categoryBreakdown: stats.categoryBreakdown.filter(cat => cat.category === selectedCategory)
       };
     }
-  }, [selectedUserId, selectedCategory]);
+  }, [selectedUserId, selectedCategory, refreshKey]);
   
   const recentSessions = useMemo(() => {
     let sessions;
@@ -97,7 +98,7 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
     return sessions
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
       .slice(0, 10);
-  }, [selectedUserId, selectedCategory]);
+  }, [selectedUserId, selectedCategory, refreshKey]);
 
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
@@ -115,11 +116,11 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
   };
 
   const handleSessionSave = (updatedSession: WorkSession) => {
-    // Dans une vraie app, on mettrait à jour les données
     console.log('Session mise à jour:', updatedSession);
     setShowSessionEditor(false);
     setSelectedSession(null);
-    // Ici on pourrait rafraîchir les données
+    // Force le recalcul des stats et des sessions en incrémentant la clé de rafraîchissement
+    setRefreshKey(prev => prev + 1);
   };
 
   const handleSessionDelete = (sessionId: string) => {
@@ -127,7 +128,8 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
     console.log('Session supprimée:', sessionId);
     setShowSessionEditor(false);
     setSelectedSession(null);
-    // Ici on pourrait rafraîchir les données
+    // Force le recalcul des stats et des sessions après suppression
+    setRefreshKey(prev => prev + 1);
   };
 
   if (showUserSelector) {
@@ -363,13 +365,17 @@ const styles = StyleSheet.create({
   },
   userButton: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
+    maxWidth: 80,
+    minWidth: 60,
+    alignItems: 'center',
   },
   userButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
+    textAlign: 'center',
   },
   backButton: {
     paddingVertical: 8,
@@ -382,9 +388,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
+    marginHorizontal: 10,
   },
   closeButton: {
     padding: 8,
+    width: 80,
+    alignItems: 'flex-end',
   },
   closeText: {
     fontSize: 24,

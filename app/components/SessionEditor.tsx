@@ -14,7 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
 import { WorkSession, WorkSessionService } from '../services/workSessionService';
 import { SessionEditService, EditSessionData } from '../services/sessionEditService';
-import SimpleDateTimePicker from './SimpleDateTimePicker';
+import NativeDateTimePicker from './NativeDateTimePicker';
 
 interface SessionEditorProps {
   visible: boolean;
@@ -237,7 +237,7 @@ export default function SessionEditor({
             
             {/* Date et heure de début */}
             {isEditing ? (
-              <SimpleDateTimePicker
+              <NativeDateTimePicker
                 label="Date et heure de début"
                 value={startDate}
                 onDateChange={handleStartDateChange}
@@ -257,7 +257,7 @@ export default function SessionEditor({
             
             {/* Date et heure de fin */}
             {isEditing ? (
-              <SimpleDateTimePicker
+              <NativeDateTimePicker
                 label="Date et heure de fin"
                 value={endDate}
                 onDateChange={handleEndDateChange}
