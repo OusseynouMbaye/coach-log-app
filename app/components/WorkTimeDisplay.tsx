@@ -1,15 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal
+  Modal,
+  ActivityIndicator
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
-import { WorkSession, WorkSessionService } from '../services/workSessionService';
+import { WorkSession } from '../services/supabaseService';
+import { SupabaseWorkSessionService } from '../services/supabaseService';
+import { useWorkSessions, useUserIds } from '../hooks/useWorkSessions';
+import { useCategories } from '../hooks/useCategories';
 import UserSelector from './UserSelector';
 import SessionEditor from './SessionEditor';
 
@@ -21,32 +25,35 @@ interface WorkTimeDisplayProps {
 export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayProps) {
   const { theme } = useTheme();
   const colors = Colors[theme];
-  
+
   const [selectedUserId, setSelectedUserId] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showUserSelector, setShowUserSelector] = useState(false);
   const [selectedSession, setSelectedSession] = useState<WorkSession | null>(null);
   const [showSessionEditor, setShowSessionEditor] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  
-  const userIds = WorkSessionService.getAllUserIds();
-  const categories = ['all', ...WorkSessionService.getAllCategories()];
+
+  // Utilisation des hooks Supabase
+  const { sessions, loading: sessionsLoading, refresh: refreshSessions } = useWorkSessions();
+  const { userIds, loading: userIdsLoading } = useUserIds();
+  const { categories: categoriesData, loading: categoriesLoading } = useCategories();
+
+  const categories = ['all', ...categoriesData];
+  const loading = sessionsLoading || userIdsLoading || categoriesLoading;
   
   const filteredStats = useMemo(() => {
     if (selectedUserId === 'all') {
       // Stats pour tous les coaches
-      const allSessions = WorkSessionService.getAllSessions();
-      let sessions = allSessions;
-      
+      let filteredSessions = sessions;
+
       if (selectedCategory !== 'all') {
-        sessions = allSessions.filter(s => s.category === selectedCategory);
+        filteredSessions = sessions.filter(s => s.category === selectedCategory);
       }
-      
-      const totalMinutes = sessions.reduce((total, session) => total + session.durationInMinutes, 0);
-      
+
+      const totalMinutes = filteredSessions.reduce((total, session) => total + session.durationInMinutes, 0);
+
       // Calcul par catégorie pour tous les coaches
-      const categoryBreakdown = WorkSessionService.getAllCategories().map(category => {
-        const categorySessions = allSessions.filter(s => s.category === category);
+      const categoryBreakdown = categoriesData.map(category => {
+        const categorySessions = sessions.filter(s => s.category === category);
         const categoryMinutes = categorySessions.reduce((total, session) => total + session.durationInMinutes, 0);
         return {
           category,
@@ -54,51 +61,68 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
           sessions: categorySessions.length
         };
       }).filter(stat => stat.minutes > 0);
-      
+
       return {
         totalMinutes,
         totalHours: Math.round((totalMinutes / 60) * 100) / 100,
-        totalSessions: sessions.length,
+        totalSessions: filteredSessions.length,
         categoryBreakdown: selectedCategory === 'all' ? categoryBreakdown : categoryBreakdown.filter(cat => cat.category === selectedCategory)
       };
     } else {
       // Stats pour un coach spécifique
-      const stats = WorkSessionService.getTimeStatsByUserId(selectedUserId);
-      
-      if (selectedCategory === 'all') {
-        return stats;
+      const userSessions = sessions.filter(s => s.userId === selectedUserId);
+
+      let filteredUserSessions = userSessions;
+      if (selectedCategory !== 'all') {
+        filteredUserSessions = userSessions.filter(s => s.category === selectedCategory);
       }
-      
-      const categoryTime = WorkSessionService.getTotalTimeByCategory(selectedUserId, selectedCategory);
-      const categorySessions = WorkSessionService.getSessionsByUserId(selectedUserId)
-        .filter(s => s.category === selectedCategory);
-      
+
+      const totalMinutes = filteredUserSessions.reduce((total, session) => total + session.durationInMinutes, 0);
+
+      // Calculate category breakdown
+      const categoryBreakdown = categoriesData.map(category => {
+        const categorySessions = userSessions.filter(s => s.category === category);
+        const categoryMinutes = categorySessions.reduce((total, session) => total + session.durationInMinutes, 0);
+        return {
+          category,
+          minutes: categoryMinutes,
+          sessions: categorySessions.length
+        };
+      }).filter(stat => stat.minutes > 0);
+
+      if (selectedCategory !== 'all') {
+        return {
+          totalMinutes,
+          totalHours: Math.round((totalMinutes / 60) * 100) / 100,
+          totalSessions: filteredUserSessions.length,
+          categoryBreakdown: categoryBreakdown.filter(cat => cat.category === selectedCategory)
+        };
+      }
+
       return {
-        totalMinutes: categoryTime,
-        totalHours: Math.round((categoryTime / 60) * 100) / 100,
-        totalSessions: categorySessions.length,
-        categoryBreakdown: stats.categoryBreakdown.filter(cat => cat.category === selectedCategory)
+        totalMinutes,
+        totalHours: Math.round((totalMinutes / 60) * 100) / 100,
+        totalSessions: filteredUserSessions.length,
+        categoryBreakdown
       };
     }
-  }, [selectedUserId, selectedCategory, refreshKey]);
+  }, [selectedUserId, selectedCategory, sessions, categoriesData]);
   
   const recentSessions = useMemo(() => {
-    let sessions;
-    
-    if (selectedUserId === 'all') {
-      sessions = WorkSessionService.getAllSessions();
-    } else {
-      sessions = WorkSessionService.getSessionsByUserId(selectedUserId);
+    let filteredSessions = sessions;
+
+    if (selectedUserId !== 'all') {
+      filteredSessions = sessions.filter(s => s.userId === selectedUserId);
     }
-    
+
     if (selectedCategory !== 'all') {
-      sessions = sessions.filter(s => s.category === selectedCategory);
+      filteredSessions = filteredSessions.filter(s => s.category === selectedCategory);
     }
-    
-    return sessions
+
+    return filteredSessions
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
       .slice(0, 10);
-  }, [selectedUserId, selectedCategory, refreshKey]);
+  }, [selectedUserId, selectedCategory, sessions]);
 
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
@@ -119,17 +143,16 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
     console.log('Session mise à jour:', updatedSession);
     setShowSessionEditor(false);
     setSelectedSession(null);
-    // Force le recalcul des stats et des sessions en incrémentant la clé de rafraîchissement
-    setRefreshKey(prev => prev + 1);
+    // Rafraîchir les données depuis Supabase
+    refreshSessions();
   };
 
   const handleSessionDelete = (sessionId: string) => {
-    // Dans une vraie app, on supprimerait la session
     console.log('Session supprimée:', sessionId);
     setShowSessionEditor(false);
     setSelectedSession(null);
-    // Force le recalcul des stats et des sessions après suppression
-    setRefreshKey(prev => prev + 1);
+    // Rafraîchir les données depuis Supabase après suppression
+    refreshSessions();
   };
 
   if (showUserSelector) {
@@ -207,7 +230,7 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
                   Toutes
                 </Text>
               </TouchableOpacity>
-              {WorkSessionService.getAllCategories().map(category => (
+              {categoriesData.map(category => (
                 <TouchableOpacity
                   key={category}
                   style={[
@@ -230,9 +253,20 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
             </ScrollView>
           </View>
 
+          {/* Indicateur de chargement */}
+          {loading && (
+            <View style={[styles.loadingSection, { backgroundColor: colors.cardBackground }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.text }]}>
+                Chargement des données...
+              </Text>
+            </View>
+          )}
+
           {/* Statistiques globales */}
-          <View style={[styles.statsSection, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Résumé</Text>
+          {!loading && (
+            <View style={[styles.statsSection, { backgroundColor: colors.cardBackground }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Résumé</Text>
             
             <View style={styles.statsGrid}>
               <View style={[styles.statCard, { backgroundColor: colors.background }]}>
@@ -262,15 +296,16 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
                 </Text>
               </View>
             </View>
-          </View>
+            </View>
+          )}
 
           {/* Répartition par catégorie */}
-          {selectedCategory === 'all' && (
+          {!loading && selectedCategory === 'all' && (
             <View style={[styles.categorySection, { backgroundColor: colors.cardBackground }]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Répartition par catégorie
               </Text>
-              
+
               {filteredStats.categoryBreakdown.map(categoryData => (
                 <View key={categoryData.category} style={styles.categoryItem}>
                   <View style={styles.categoryHeader}>
@@ -278,62 +313,62 @@ export default function WorkTimeDisplay({ visible, onClose }: WorkTimeDisplayPro
                       {categoryData.category}
                     </Text>
                     <Text style={[styles.categoryTime, { color: colors.primary }]}>
-                      {WorkSessionService.formatDuration(categoryData.minutes)}
+                      {SupabaseWorkSessionService.formatDuration(categoryData.minutes)}
                     </Text>
                   </View>
-                  <View style={styles.categoryMeta}>
-                    <Text style={[styles.categoryMeta, { color: colors.textSecondary }]}>
-                      {categoryData.sessions} session(s) • 
-                      {Math.round((categoryData.minutes / filteredStats.totalMinutes) * 100)}%
-                    </Text>
-                  </View>
+                  <Text style={[styles.categoryMeta, { color: colors.textSecondary }]}>
+                    {categoryData.sessions} session(s) •
+                    {Math.round((categoryData.minutes / filteredStats.totalMinutes) * 100)}%
+                  </Text>
                 </View>
               ))}
             </View>
           )}
 
           {/* Sessions récentes */}
-          <View style={[styles.sessionsSection, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Sessions récentes
-            </Text>
-            
-            {recentSessions.map(session => (
-              <TouchableOpacity
-                key={session.id}
-                style={[styles.sessionItem, { borderColor: colors.border }]}
-                onPress={() => handleSessionSelect(session)}
-              >
-                <View style={styles.sessionContent}>
-                  <View style={styles.sessionHeader}>
-                    <Text style={[styles.sessionCategory, { color: colors.primary }]}>
-                      {session.category}
-                    </Text>
-                    <View style={styles.sessionMeta}>
-                      <Text style={[styles.sessionDuration, { color: colors.text }]}>
-                        {WorkSessionService.formatDuration(session.durationInMinutes)}
+          {!loading && (
+            <View style={[styles.sessionsSection, { backgroundColor: colors.cardBackground }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Sessions récentes
+              </Text>
+
+              {recentSessions.map(session => (
+                <TouchableOpacity
+                  key={session.id}
+                  style={[styles.sessionItem, { borderColor: colors.border }]}
+                  onPress={() => handleSessionSelect(session)}
+                >
+                  <View style={styles.sessionContent}>
+                    <View style={styles.sessionHeader}>
+                      <Text style={[styles.sessionCategory, { color: colors.primary }]}>
+                        {session.category}
                       </Text>
-                      <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✏️</Text>
+                      <View style={styles.sessionMeta}>
+                        <Text style={[styles.sessionDuration, { color: colors.text }]}>
+                          {SupabaseWorkSessionService.formatDuration(session.durationInMinutes)}
+                        </Text>
+                        <Text style={[styles.editIcon, { color: colors.textSecondary }]}>✏️</Text>
+                      </View>
+                    </View>
+                    <View style={styles.sessionDetails}>
+                      <Text style={[styles.sessionDate, { color: colors.textSecondary }]}>
+                        {SupabaseWorkSessionService.formatDate(session.startTime)}
+                      </Text>
+                      <Text style={[styles.sessionCoach, { color: colors.textSecondary }]}>
+                        {getUserDisplayName(session.userId)}
+                      </Text>
                     </View>
                   </View>
-                  <View style={styles.sessionDetails}>
-                    <Text style={[styles.sessionDate, { color: colors.textSecondary }]}>
-                      {WorkSessionService.formatDate(session.startTime)}
-                    </Text>
-                    <Text style={[styles.sessionCoach, { color: colors.textSecondary }]}>
-                      {getUserDisplayName(session.userId)}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-            
-            {recentSessions.length === 0 && (
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Aucune session trouvée pour ces critères
-              </Text>
-            )}
-          </View>
+                </TouchableOpacity>
+              ))}
+
+              {recentSessions.length === 0 && (
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  Aucune session trouvée pour ces critères
+                </Text>
+              )}
+            </View>
+          )}
         </ScrollView>
         
         <SessionEditor
@@ -538,5 +573,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     marginTop: 20,
+  },
+  loadingSection: {
+    borderRadius: 12,
+    padding: 40,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
-import { WorkSessionService } from '../services/workSessionService';
+import { useWorkSessions, useUserIds } from '../hooks/useWorkSessions';
 
 interface UserSelectorProps {
   selectedUserId: string;
@@ -10,15 +10,18 @@ interface UserSelectorProps {
   showAllOption?: boolean;
 }
 
-export default function UserSelector({ 
-  selectedUserId, 
-  onSelectUser, 
-  showAllOption = false 
+export default function UserSelector({
+  selectedUserId,
+  onSelectUser,
+  showAllOption = false
 }: UserSelectorProps) {
   const { theme } = useTheme();
   const colors = Colors[theme];
-  
-  const userIds = WorkSessionService.getAllUserIds();
+
+  const { sessions, loading: sessionsLoading } = useWorkSessions();
+  const { userIds, loading: userIdsLoading } = useUserIds();
+
+  const loading = sessionsLoading || userIdsLoading;
   const allOptions = showAllOption ? ['all', ...userIds] : userIds;
   
   const getUserDisplayName = (userId: string) => {
@@ -28,30 +31,43 @@ export default function UserSelector({
     return userId.replace(/^coach/, 'Coach ');
   };
 
-  const getUserStats = (userId: string) => {
-    if (userId === 'all') {
-      const allSessions = WorkSessionService.getAllSessions();
-      const totalMinutes = allSessions.reduce((total, session) => total + session.durationInMinutes, 0);
+  const getUserStats = useMemo(() => {
+    return (userId: string) => {
+      if (userId === 'all') {
+        const totalMinutes = sessions.reduce((total, session) => total + session.durationInMinutes, 0);
+        return {
+          totalSessions: sessions.length,
+          totalHours: Math.round((totalMinutes / 60) * 100) / 100
+        };
+      }
+
+      const userSessions = sessions.filter(s => s.userId === userId);
+      const totalMinutes = userSessions.reduce((total, session) => total + session.durationInMinutes, 0);
       return {
-        totalSessions: allSessions.length,
+        totalSessions: userSessions.length,
         totalHours: Math.round((totalMinutes / 60) * 100) / 100
       };
-    }
-    
-    const stats = WorkSessionService.getTimeStatsByUserId(userId);
-    return {
-      totalSessions: stats.totalSessions,
-      totalHours: stats.totalHours
     };
-  };
+  }, [sessions]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Chargement des coaches...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.text }]}>
         Sélectionner un coach
       </Text>
-      
-      <ScrollView 
+
+      <ScrollView
         horizontal={false}
         showsVerticalScrollIndicator={false}
         style={styles.scrollContainer}
@@ -181,5 +197,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

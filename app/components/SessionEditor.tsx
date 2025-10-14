@@ -8,12 +8,14 @@ import {
   Modal,
   TextInput,
   Alert,
-  Switch
+  Switch,
+  ActivityIndicator
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
-import { WorkSession, WorkSessionService } from '../services/workSessionService';
+import { WorkSession, SupabaseWorkSessionService } from '../services/supabaseService';
 import { SessionEditService, EditSessionData } from '../services/sessionEditService';
+import { useCategories } from '../hooks/useCategories';
 import NativeDateTimePicker from './NativeDateTimePicker';
 
 interface SessionEditorProps {
@@ -47,6 +49,10 @@ export default function SessionEditor({
   const [isEditing, setIsEditing] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { categories, loading: categoriesLoading } = useCategories();
 
   // Initialise les données quand la session change
   useEffect(() => {
@@ -78,32 +84,65 @@ export default function SessionEditor({
     }
   }, [editedData, isEditing]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!session) return;
-    
-    const result = SessionEditService.editSession(session.id, editedData);
-    
-    if (result.success && result.updatedSession) {
-      Alert.alert('Succès', result.message);
-      onSave?.(result.updatedSession);
-      setIsEditing(false);
-    } else {
-      Alert.alert('Erreur', result.message);
+
+    // Validation
+    const validation = SessionEditService.validateSession(editedData);
+    if (!validation.isValid) {
+      Alert.alert('Erreur', `Erreurs de validation: ${validation.errors.join(', ')}`);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Calcul de la durée
+      const durationInMinutes = editedData.durationInMinutes ||
+        SessionEditService.calculateDuration(editedData.startTime, editedData.endTime);
+
+      // Mise à jour de la session via Supabase
+      const updatedSession = await SupabaseWorkSessionService.updateSession(session.id, {
+        category: editedData.category.trim(),
+        startTime: SessionEditService.formatDateToISO(editedData.startTime),
+        endTime: SessionEditService.formatDateToISO(editedData.endTime),
+        durationInMinutes
+      });
+
+      if (updatedSession) {
+        Alert.alert('Succès', 'Session modifiée avec succès');
+        onSave?.(updatedSession);
+        setIsEditing(false);
+      } else {
+        throw new Error('Échec de la mise à jour');
+      }
+    } catch (error) {
+      console.error('Error saving session:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder la session');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!session) return;
-    
-    const result = SessionEditService.deleteSession(session.id);
-    
-    if (result.success) {
-      Alert.alert('Supprimé', result.message);
-      onDelete?.(session.id);
-      setShowDeleteConfirm(false);
-      onClose();
-    } else {
-      Alert.alert('Erreur', result.message);
+
+    setIsDeleting(true);
+    try {
+      const success = await SupabaseWorkSessionService.deleteSession(session.id);
+
+      if (success) {
+        Alert.alert('Supprimé', 'Session supprimée avec succès');
+        onDelete?.(session.id);
+        setShowDeleteConfirm(false);
+        onClose();
+      } else {
+        throw new Error('Échec de la suppression');
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      Alert.alert('Erreur', 'Impossible de supprimer la session');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -205,8 +244,11 @@ export default function SessionEditor({
               <Text style={[styles.fieldLabel, { color: colors.text }]}>Catégorie</Text>
               {isEditing ? (
                 <View style={styles.categorySelector}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {WorkSessionService.getAllCategories().map(category => (
+                  {categoriesLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {categories.map(category => (
                       <TouchableOpacity
                         key={category}
                         style={[
@@ -225,8 +267,9 @@ export default function SessionEditor({
                           {category}
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
               ) : (
                 <Text style={[styles.fieldValue, { color: colors.primary }]}>
@@ -246,15 +289,15 @@ export default function SessionEditor({
               <View style={styles.fieldContainer}>
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>Date et heure de début</Text>
                 <Text style={[styles.fieldValue, { color: colors.text }]}>
-                  {WorkSessionService.formatDate(session.startTime)} à {' '}
-                  {new Date(session.startTime).toLocaleTimeString('fr-FR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
+                  {SupabaseWorkSessionService.formatDate(session.startTime)} à {' '}
+                  {new Date(session.startTime).toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
                   })}
                 </Text>
               </View>
             )}
-            
+
             {/* Date et heure de fin */}
             {isEditing ? (
               <NativeDateTimePicker
@@ -266,10 +309,10 @@ export default function SessionEditor({
               <View style={styles.fieldContainer}>
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>Date et heure de fin</Text>
                 <Text style={[styles.fieldValue, { color: colors.text }]}>
-                  {WorkSessionService.formatDate(session.endTime)} à {' '}
-                  {new Date(session.endTime).toLocaleTimeString('fr-FR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
+                  {SupabaseWorkSessionService.formatDate(session.endTime)} à {' '}
+                  {new Date(session.endTime).toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
                   })}
                 </Text>
               </View>
@@ -322,15 +365,19 @@ export default function SessionEditor({
               <>
                 <TouchableOpacity
                   style={[
-                    styles.actionButton, 
-                    { 
-                      backgroundColor: validationErrors.length > 0 ? colors.textSecondary : colors.success 
+                    styles.actionButton,
+                    {
+                      backgroundColor: (validationErrors.length > 0 || isSaving) ? colors.textSecondary : colors.success
                     }
                   ]}
                   onPress={handleSave}
-                  disabled={validationErrors.length > 0}
+                  disabled={validationErrors.length > 0 || isSaving}
                 >
-                  <Text style={styles.actionButtonText}>💾 Sauvegarder</Text>
+                  {isSaving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>💾 Sauvegarder</Text>
+                  )}
                 </TouchableOpacity>
                 
                 <TouchableOpacity
@@ -388,10 +435,15 @@ export default function SessionEditor({
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: colors.error }]}
                   onPress={handleDelete}
+                  disabled={isDeleting}
                 >
-                  <Text style={[styles.modalButtonText, { color: '#fff' }]}>
-                    Supprimer
-                  </Text>
+                  {isDeleting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>
+                      Supprimer
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>

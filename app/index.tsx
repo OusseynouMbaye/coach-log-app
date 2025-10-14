@@ -1,16 +1,22 @@
-import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Switch } from "react-native";
+import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Switch, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { useTheme } from './context/ThemeContext';
 import { Colors } from './constants/Colors';
 import WorkTimeDisplay from './components/WorkTimeDisplay';
 import CategoryManager from './components/CategoryManager';
+import SimpleSupabaseTest from './components/SimpleSupabaseTest';
+import WorkTimeEntry from './components/WorkTimeEntry';
+import DebugInfo from './components/DebugInfo';
 
 export default function Index() {
   const { theme, toggleTheme, isDark } = useTheme();
   const colors = Colors[theme];
   const [showWorkTime, setShowWorkTime] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showSupabaseTest, setShowSupabaseTest] = useState(false);
+  const [showWorkTimeEntry, setShowWorkTimeEntry] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -56,13 +62,16 @@ export default function Index() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Actions rapides</Text>
         
         <View style={styles.actionGrid}>
-          <TouchableOpacity style={[styles.actionCard, { 
-            backgroundColor: colors.cardBackground,
-            shadowColor: colors.shadow,
-          }]}>
-            <Text style={styles.actionIcon}>📝</Text>
-            <Text style={[styles.actionTitle, { color: colors.text }]}>Nouvelle session</Text>
-            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Créer un entraînement</Text>
+          <TouchableOpacity
+            style={[styles.actionCard, {
+              backgroundColor: colors.cardBackground,
+              shadowColor: colors.shadow,
+            }]}
+            onPress={() => setShowWorkTimeEntry(true)}
+          >
+            <Text style={styles.actionIcon}>⏱️</Text>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Entrer mon temps</Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Ajouter une session</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.actionCard, { 
@@ -96,6 +105,30 @@ export default function Index() {
             <Text style={styles.actionIcon}>🗂️</Text>
             <Text style={[styles.actionTitle, { color: colors.text }]}>Catégories</Text>
             <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Gérer et supprimer</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, {
+              backgroundColor: colors.cardBackground,
+              shadowColor: colors.shadow,
+            }]}
+            onPress={() => setShowSupabaseTest(true)}
+          >
+            <Text style={styles.actionIcon}>🗄️</Text>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Test Supabase</Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Vérifier connexion</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, {
+              backgroundColor: colors.cardBackground,
+              shadowColor: colors.shadow,
+            }]}
+            onPress={() => setShowDebugInfo(true)}
+          >
+            <Text style={styles.actionIcon}>🐛</Text>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Debug Info</Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Variables d'env</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -134,6 +167,63 @@ export default function Index() {
         visible={showCategoryManager} 
         onClose={() => setShowCategoryManager(false)} 
       />
+
+      {showSupabaseTest && (
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowSupabaseTest(false)}
+                style={[styles.closeButton, { backgroundColor: colors.error }]}
+              >
+                <Text style={styles.closeButtonText}>✕ Fermer</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalContent}>
+              <SimpleSupabaseTest />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {showWorkTimeEntry && (
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowWorkTimeEntry(false)}
+                style={[styles.closeButton, { backgroundColor: colors.error }]}
+              >
+                <Text style={styles.closeButtonText}>✕ Fermer</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalContent}>
+              <WorkTimeEntry
+                userId="coach-temp-001"
+                onSessionCreated={() => setShowWorkTimeEntry(false)}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {showDebugInfo && (
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowDebugInfo(false)}
+                style={[styles.closeButton, { backgroundColor: colors.error }]}
+              >
+                <Text style={styles.closeButtonText}>✕ Fermer</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalContent}>
+              <DebugInfo />
+            </View>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -258,5 +348,40 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 16,
     lineHeight: 22,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    width: '100%',
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  closeButton: {
+    padding: 12,
+    borderRadius: 20,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalContent: {
+    flex: 1,
   },
 });

@@ -23,7 +23,7 @@ export default function NativeDateTimePicker({
   value,
   onDateChange,
   disabled = false
-}: IOSStyleDateTimePickerProps) {
+}: NativeDateTimePickerProps) {
   const { theme } = useTheme();
   const colors = Colors[theme];
   

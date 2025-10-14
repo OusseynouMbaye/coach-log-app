@@ -14,14 +14,17 @@ export class SupabaseWorkSessionService {
   
   // Convert between local format and Supabase format
   private static toSupabaseFormat(session: Partial<WorkSession>): Partial<SupabaseWorkSession> {
-    return {
-      id: session.id,
-      user_id: session.userId,
-      category: session.category,
-      start_time: session.startTime,
-      end_time: session.endTime,
-      duration_in_minutes: session.durationInMinutes,
-    };
+    const result: Partial<SupabaseWorkSession> = {};
+
+    // Only include defined properties
+    if (session.id !== undefined) result.id = session.id;
+    if (session.userId !== undefined) result.user_id = session.userId;
+    if (session.category !== undefined) result.category = session.category;
+    if (session.startTime !== undefined) result.start_time = session.startTime;
+    if (session.endTime !== undefined) result.end_time = session.endTime;
+    if (session.durationInMinutes !== undefined) result.duration_in_minutes = session.durationInMinutes;
+
+    return result;
   }
 
   private static fromSupabaseFormat(session: SupabaseWorkSession): WorkSession {
@@ -79,21 +82,26 @@ export class SupabaseWorkSessionService {
   // Create new session
   static async createSession(session: Omit<WorkSession, 'id'>): Promise<WorkSession | null> {
     try {
+      console.log('📝 Creating session with data:', session);
       const supabaseSession = this.toSupabaseFormat(session);
+      console.log('📝 Converted to Supabase format:', supabaseSession);
+
       const { data, error } = await supabase
         .from('work_sessions')
-        .insert([supabaseSession])
+        .insert([supabaseSession as any])
         .select()
         .single();
 
       if (error) {
-        console.error('Error creating session:', error);
+        console.error('❌ Error creating session:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
         return null;
       }
 
-      return this.fromSupabaseFormat(data);
+      console.log('✅ Session created successfully:', data);
+      return this.fromSupabaseFormat(data as SupabaseWorkSession);
     } catch (error) {
-      console.error('Error in createSession:', error);
+      console.error('❌ Exception in createSession:', error);
       return null;
     }
   }
@@ -104,7 +112,7 @@ export class SupabaseWorkSessionService {
       const supabaseUpdates = this.toSupabaseFormat(updates);
       const { data, error } = await supabase
         .from('work_sessions')
-        .update(supabaseUpdates)
+        .update(supabaseUpdates as any)
         .eq('id', id)
         .select()
         .single();
@@ -114,7 +122,7 @@ export class SupabaseWorkSessionService {
         return null;
       }
 
-      return this.fromSupabaseFormat(data);
+      return this.fromSupabaseFormat(data as SupabaseWorkSession);
     } catch (error) {
       console.error('Error in updateSession:', error);
       return null;
@@ -154,7 +162,7 @@ export class SupabaseWorkSessionService {
         return [];
       }
 
-      const uniqueUserIds = [...new Set(data.map(session => session.user_id))];
+      const uniqueUserIds = [...new Set((data as any[]).map(session => session.user_id))];
       return uniqueUserIds;
     } catch (error) {
       console.error('Error in getAllUserIds:', error);
@@ -175,7 +183,7 @@ export class SupabaseWorkSessionService {
         return [];
       }
 
-      return data.map(category => category.name);
+      return (data as any[]).map(category => category.name);
     } catch (error) {
       console.error('Error in getAllCategories:', error);
       return [];
@@ -187,7 +195,7 @@ export class SupabaseWorkSessionService {
     try {
       const { error } = await supabase
         .from('categories')
-        .insert([{ name }]);
+        .insert([{ name } as any]);
 
       if (error) {
         console.error('Error creating category:', error);
