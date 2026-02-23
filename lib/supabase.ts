@@ -33,6 +33,47 @@ export interface Category {
   created_at?: string;
 }
 
+// --- Training Plan types (snake_case = Supabase) ---
+export interface TrainingPlanRow {
+  id: string;
+  title: string;
+  date: string;
+  created_by: string;
+  last_modified_by?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TrainingExerciseRow {
+  id: string;
+  plan_id: string;
+  order_index: number;
+  name: string;    // titre de la section : "warm up", "set 1", etc.
+  content: string; // texte libre multi-lignes
+  created_at?: string;
+}
+
+// --- Training Plan types (camelCase = app) ---
+export interface TrainingPlan {
+  id: string;
+  title: string;
+  date: string;
+  createdBy: string;
+  lastModifiedBy?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TrainingExercise {
+  id: string;
+  planId: string;
+  orderIndex: number;
+  name: string;    // titre de la section : "warm up", "set 1", etc.
+  content: string; // texte libre multi-lignes
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -45,6 +86,16 @@ export interface Database {
         Row: Category;
         Insert: Omit<Category, 'id' | 'created_at'>;
         Update: Partial<Omit<Category, 'id' | 'created_at'>>;
+      };
+      training_plans: {
+        Row: TrainingPlanRow;
+        Insert: Omit<TrainingPlanRow, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<TrainingPlanRow, 'id' | 'created_at'>>;
+      };
+      training_exercises: {
+        Row: TrainingExerciseRow;
+        Insert: Omit<TrainingExerciseRow, 'id' | 'created_at'>;
+        Update: Partial<Omit<TrainingExerciseRow, 'id' | 'created_at'>>;
       };
     };
   };

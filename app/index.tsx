@@ -8,6 +8,8 @@ import CategoryManager from './components/CategoryManager';
 import SimpleSupabaseTest from './components/SimpleSupabaseTest';
 import WorkTimeEntry from './components/WorkTimeEntry';
 import DebugInfo from './components/DebugInfo';
+import UserSelector from './components/UserSelector';
+import TrainingPlanList from './components/TrainingPlanList';
 
 export default function Index() {
   const { theme, toggleTheme, isDark } = useTheme();
@@ -16,6 +18,8 @@ export default function Index() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showSupabaseTest, setShowSupabaseTest] = useState(false);
   const [showWorkTimeEntry, setShowWorkTimeEntry] = useState(false);
+  const [selectedCoachId, setSelectedCoachId] = useState<string>('');
+  const [showTrainingPlans, setShowTrainingPlans] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   return (
@@ -74,13 +78,16 @@ export default function Index() {
             <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Ajouter une session</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionCard, { 
-            backgroundColor: colors.cardBackground,
-            shadowColor: colors.shadow,
-          }]}>
-            <Text style={styles.actionIcon}>👥</Text>
-            <Text style={[styles.actionTitle, { color: colors.text }]}>Mes athlètes</Text>
-            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Gérer l&apos;équipe</Text>
+          <TouchableOpacity
+            style={[styles.actionCard, {
+              backgroundColor: colors.cardBackground,
+              shadowColor: colors.shadow,
+            }]}
+            onPress={() => setShowTrainingPlans(true)}
+          >
+            <Text style={styles.actionIcon}>🏊</Text>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Entraînements</Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>Plans du jour</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -158,10 +165,18 @@ export default function Index() {
         </View>
       </View>
 
-      <WorkTimeDisplay 
-        visible={showWorkTime} 
-        onClose={() => setShowWorkTime(false)} 
+      <WorkTimeDisplay
+        visible={showWorkTime}
+        onClose={() => setShowWorkTime(false)}
       />
+
+      {showTrainingPlans && (
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <TrainingPlanList onClose={() => setShowTrainingPlans(false)} />
+          </View>
+        </View>
+      )}
       
       <CategoryManager 
         visible={showCategoryManager} 
@@ -190,18 +205,33 @@ export default function Index() {
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={styles.modalHeader}>
+              {selectedCoachId ? (
+                <TouchableOpacity
+                  onPress={() => setSelectedCoachId('')}
+                  style={[styles.closeButton, { backgroundColor: colors.textSecondary }]}
+                >
+                  <Text style={styles.closeButtonText}>← Changer</Text>
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity
-                onPress={() => setShowWorkTimeEntry(false)}
+                onPress={() => { setShowWorkTimeEntry(false); setSelectedCoachId(''); }}
                 style={[styles.closeButton, { backgroundColor: colors.error }]}
               >
                 <Text style={styles.closeButtonText}>✕ Fermer</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.modalContent}>
-              <WorkTimeEntry
-                userId="coach-temp-001"
-                onSessionCreated={() => setShowWorkTimeEntry(false)}
-              />
+              {!selectedCoachId ? (
+                <UserSelector
+                  selectedUserId={selectedCoachId}
+                  onSelectUser={(id) => setSelectedCoachId(id)}
+                />
+              ) : (
+                <WorkTimeEntry
+                  userId={selectedCoachId}
+                  onSessionCreated={() => { setShowWorkTimeEntry(false); setSelectedCoachId(''); }}
+                />
+              )}
             </View>
           </View>
         </View>

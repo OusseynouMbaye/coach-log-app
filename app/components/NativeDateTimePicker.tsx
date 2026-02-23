@@ -7,9 +7,14 @@ import {
   Modal,
   Platform
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
+
+// Import conditionnel pour éviter les erreurs sur le web
+let DateTimePicker: any = null;
+if (Platform.OS !== 'web') {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
 
 interface NativeDateTimePickerProps {
   label: string;
@@ -26,7 +31,7 @@ export default function NativeDateTimePicker({
 }: NativeDateTimePickerProps) {
   const { theme } = useTheme();
   const colors = Colors[theme];
-  
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(value);
@@ -46,6 +51,36 @@ export default function NativeDateTimePicker({
     });
   };
 
+  // Format pour les inputs HTML (web)
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatTimeForInput = (date: Date): string => {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const handleWebDateChange = (e: any) => {
+    if (!e.target.value) return;
+    const [year, month, day] = e.target.value.split('-').map(Number);
+    const newDate = new Date(value);
+    newDate.setFullYear(year, month - 1, day);
+    onDateChange(newDate);
+  };
+
+  const handleWebTimeChange = (e: any) => {
+    if (!e.target.value) return;
+    const [hours, minutes] = e.target.value.split(':').map(Number);
+    const newDate = new Date(value);
+    newDate.setHours(hours, minutes, 0, 0);
+    onDateChange(newDate);
+  };
+
   const openDatePicker = () => {
     if (!disabled) {
       setTempDate(value);
@@ -60,30 +95,26 @@ export default function NativeDateTimePicker({
     }
   };
 
-  const onDatePickerChange = (event: any, selectedDate?: Date) => {
+  const onDatePickerChange = (_event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
       if (selectedDate) {
-        // Pour Android, on applique immédiatement le changement
         onDateChange(selectedDate);
       }
     } else {
-      // Pour iOS, on met à jour la date temporaire
       if (selectedDate) {
         setTempDate(selectedDate);
       }
     }
   };
 
-  const onTimePickerChange = (event: any, selectedDate?: Date) => {
+  const onTimePickerChange = (_event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
       if (selectedDate) {
-        // Pour Android, on applique immédiatement le changement
         onDateChange(selectedDate);
       }
     } else {
-      // Pour iOS, on met à jour la date temporaire
       if (selectedDate) {
         setTempDate(selectedDate);
       }
@@ -110,17 +141,92 @@ export default function NativeDateTimePicker({
     setShowTimePicker(false);
   };
 
+  // ─── RENDU WEB ───────────────────────────────────────────────
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+        <View style={styles.pickersRow}>
+          {/* Date — input HTML natif */}
+          <View style={[
+            styles.pickerButton,
+            styles.dateButton,
+            { backgroundColor: colors.cardBackground, borderColor: colors.border, opacity: disabled ? 0.6 : 1 }
+          ]}>
+            <View style={styles.pickerContent}>
+              <Text style={[styles.pickerIcon, { color: colors.primary }]}>📅</Text>
+              <View style={styles.pickerTextContainer}>
+                <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>Date</Text>
+                <input
+                  type="date"
+                  title={label}
+                  aria-label={label}
+                  disabled={disabled}
+                  value={formatDateForInput(value)}
+                  onChange={handleWebDateChange}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: colors.text,
+                    outline: 'none',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    width: '100%',
+                  } as any}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Heure — input HTML natif */}
+          <View style={[
+            styles.pickerButton,
+            styles.timeButton,
+            { backgroundColor: colors.cardBackground, borderColor: colors.border, opacity: disabled ? 0.6 : 1 }
+          ]}>
+            <View style={styles.pickerContent}>
+              <Text style={[styles.pickerIcon, { color: colors.primary }]}>🕐</Text>
+              <View style={styles.pickerTextContainer}>
+                <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>Heure</Text>
+                <input
+                  type="time"
+                  title={label}
+                  aria-label={label}
+                  disabled={disabled}
+                  value={formatTimeForInput(value)}
+                  onChange={handleWebTimeChange}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: colors.text,
+                    outline: 'none',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    width: '100%',
+                  } as any}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // ─── RENDU iOS / Android ──────────────────────────────────────
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-      
+
       <View style={styles.pickersRow}>
         {/* Sélecteur de date */}
         <TouchableOpacity
           style={[
             styles.pickerButton,
             styles.dateButton,
-            { 
+            {
               backgroundColor: colors.cardBackground,
               borderColor: colors.border,
               opacity: disabled ? 0.6 : 1
@@ -145,7 +251,7 @@ export default function NativeDateTimePicker({
           style={[
             styles.pickerButton,
             styles.timeButton,
-            { 
+            {
               backgroundColor: colors.cardBackground,
               borderColor: colors.border,
               opacity: disabled ? 0.6 : 1
@@ -185,15 +291,17 @@ export default function NativeDateTimePicker({
                   <Text style={[styles.modalButton, { color: colors.primary }]}>Confirmer</Text>
                 </TouchableOpacity>
               </View>
-              
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="spinner"
-                onChange={onDatePickerChange}
-                textColor={colors.text}
-                locale="fr-FR"
-              />
+
+              {DateTimePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={onDatePickerChange}
+                  textColor={colors.text}
+                  locale="fr-FR"
+                />
+              )}
             </View>
           </View>
         </Modal>
@@ -218,22 +326,24 @@ export default function NativeDateTimePicker({
                   <Text style={[styles.modalButton, { color: colors.primary }]}>Confirmer</Text>
                 </TouchableOpacity>
               </View>
-              
-              <DateTimePicker
-                value={tempDate}
-                mode="time"
-                display="spinner"
-                onChange={onTimePickerChange}
-                textColor={colors.text}
-                locale="fr-FR"
-              />
+
+              {DateTimePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="time"
+                  display="spinner"
+                  onChange={onTimePickerChange}
+                  textColor={colors.text}
+                  locale="fr-FR"
+                />
+              )}
             </View>
           </View>
         </Modal>
       )}
 
-      {/* DateTimePicker pour Android (s'affiche directement) */}
-      {Platform.OS === 'android' && showDatePicker && (
+      {/* DateTimePicker pour Android */}
+      {Platform.OS === 'android' && showDatePicker && DateTimePicker && (
         <DateTimePicker
           value={value}
           mode="date"
@@ -242,7 +352,7 @@ export default function NativeDateTimePicker({
         />
       )}
 
-      {Platform.OS === 'android' && showTimePicker && (
+      {Platform.OS === 'android' && showTimePicker && DateTimePicker && (
         <DateTimePicker
           value={value}
           mode="time"
@@ -290,6 +400,7 @@ const styles = StyleSheet.create({
   },
   pickerTextContainer: {
     alignItems: 'center',
+    width: '100%',
   },
   pickerLabel: {
     fontSize: 12,

@@ -24,8 +24,17 @@ export default function WorkTimeEntry({ userId, onSessionCreated }: WorkTimeEntr
   const colors = Colors[theme];
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [startTime, setStartTime] = useState<Date>(new Date());
-  const [endTime, setEndTime] = useState<Date>(new Date());
+  const [startTime, setStartTime] = useState<Date>(() => {
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    return d;
+  });
+  const [endTime, setEndTime] = useState<Date>(() => {
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    d.setHours(d.getHours() + 1);
+    return d;
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const { categories, loading: categoriesLoading } = useCategories();
@@ -91,8 +100,12 @@ export default function WorkTimeEntry({ userId, onSessionCreated }: WorkTimeEntr
 
         // Réinitialiser le formulaire
         setSelectedCategory('');
-        setStartTime(new Date());
-        setEndTime(new Date());
+        const reset = new Date();
+        reset.setMinutes(0, 0, 0);
+        setStartTime(reset);
+        const resetEnd = new Date(reset);
+        resetEnd.setHours(resetEnd.getHours() + 1);
+        setEndTime(resetEnd);
 
         onSessionCreated?.();
       } else {
@@ -139,6 +152,10 @@ export default function WorkTimeEntry({ userId, onSessionCreated }: WorkTimeEntr
 
           {categoriesLoading ? (
             <ActivityIndicator size="small" color={colors.primary} />
+          ) : categories.length === 0 ? (
+            <Text style={[styles.noCategoriesText, { color: colors.error }]}>
+              ⚠️ Aucune catégorie trouvée. Vérifiez votre connexion Supabase ou ajoutez des catégories.
+            </Text>
           ) : (
             <View style={styles.categoriesContainer}>
               {categories.map((category) => (
@@ -204,8 +221,8 @@ export default function WorkTimeEntry({ userId, onSessionCreated }: WorkTimeEntr
           </Text>
         </View>
 
-        {/* Messages de validation */}
-        {!validation.isValid && selectedCategory && (
+        {/* Messages de validation — toujours visible */}
+        {!validation.isValid && (
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: colors.error }]}>
               ⚠️ {validation.error}
@@ -261,6 +278,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  noCategoriesText: {
+    fontSize: 14,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
   },
   categoriesContainer: {
     flexDirection: 'row',
