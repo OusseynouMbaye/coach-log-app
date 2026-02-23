@@ -1,0 +1,32 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+# Optimisation Cursor - Fichiers à exclure
+
+## Files: Exclude
+
+**/node_modules
+**/dist
+**/build
+**/.next
+**/.git
+**/coverage
+**/.cache
+**/out
+**/.vscode
+**/*.log
+**/.nuxt
+**/tmp
+**/temp
+**/.turbo
+**/.vercel
+**/.netlify
+**/vendor
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/venv
+**/.DS_Store
+**/thumbs.db
+**/.expo
+**/android
+**/ios
+**/*.lock

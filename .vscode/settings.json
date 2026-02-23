@@ -3,5 +3,46 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "claudeCodeChat.permissions.yoloMode": false,
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/coverage/**": true,
+    "**/.cache/**": true,
+    "**/.expo/**": true,
+    "**/android/**": true,
+    "**/ios/**": true,
+    "**/tmp/**": true,
+    "**/temp/**": true
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.expo": true,
+    "**/android": true,
+    "**/ios": true,
+    "**/coverage": true,
+    "**/.cache": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/package-lock.json": true,
+    "**/.expo": true,
+    "**/android": true,
+    "**/ios": true,
+    "**/dist": true,
+    "**/build": true
+  },
+  "typescript.tsserver.maxTsServerMemory": 2048,
+  "editor.minimap.enabled": false,
+  "editor.bracketPairColorization.independentColorPoolPerBracketType": false,
+  "editor.occurrencesHighlight": "off",
+  "editor.renderWhitespace": "none",
+  "editor.smoothScrolling": false,
+  "workbench.list.smoothScrolling": false,
+  "terminal.integrated.smoothScrolling": false
 }

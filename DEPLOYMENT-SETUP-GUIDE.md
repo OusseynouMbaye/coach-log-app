@@ -2,7 +2,7 @@
 
 ## 📋 Vue d'ensemble du projet
 
-**Coach Log App** - Application mobile/web de gestion du temps de travail des entraîneurs
+**Coach Log App** - Application mobile/web de gestion du temps de travail des entraîneurs et de programme d'entrainement
 
 ### 🎯 Objectifs
 
